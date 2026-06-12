@@ -1,3 +1,0 @@
-
-const mongoose =requires("mongoose");
-

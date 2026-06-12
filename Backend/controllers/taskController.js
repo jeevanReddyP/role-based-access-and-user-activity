@@ -1,74 +1,73 @@
-const ActivityLog = require("../models/ActivityLog")
-const Task = require("../models/Task")
+const Task = require("../models/Task");
 
-const CreateTask = async (req, res) => {
-    try {
-        const { title, description } = req.body
-        if (!title || !description) return res.status(400).json({ message: "please provide title and description" })
-        const newTask = await Task.create({ title, description, user: req.user.id })
-        await ActivityLog.create({ user: req.user.id, action: "Task Created", task: newTask._id })
-        res.status(201).json(newTask)
-    }
-    catch (error) {
-        res.status(500).json({ message: "internal server error" })
-    }
-}
+const createTask = async (req, res) => {
+  try {
+    const { title, description } = req.body;
 
-const GetMyTasks = async (req, res) => {
-    try {
-        const tasks = await Task.find({ user: req.user.id })
-        res.status(200).json(tasks)
+    if (!title || !description) {
+      return res.status(400).json({ message: "Please fill all the details" });
     }
-    catch (error) {
-        res.status(500).json({ message: "internal server error" })
-    }
-}
 
-const UpdateTask = async (req, res) => {
-    try {
-        const taskId = req.params.id
-        const { title, description } = req.body
-        const task = await Task.findById(taskId)
-        if (!task) return res.status(404).json({ message: "task not found" })
-        if (task.user.toString() !== req.user.id) {
-            return res.status(403).json({
-                message: "Not authorized"
-            })
-        }
-        const updatedTask = await Task.findByIdAndUpdate(taskId, { title, description }, { new: true })
-        await ActivityLog.create({ user: req.user.id, action: "Task Updated", task: taskId })
-        res.status(200).json(updatedTask)
-    }
-    catch (error) {
-        res.status(500).json({ message: "internal server error" })
-    }
-}
+    const task = await Task.create({
+      title,
+      description,
+      user: req.user.id,
+    });
 
-const DeleteTask = async (req, res) => {
-    try {
-        const taskId = req.params.id
-        const task = await Task.findById(taskId)
-        if (!task) return res.status(404).json({ message: "task not found" })
-        if (task.user.toString() !== req.user.id) {
-            return res.status(403).json({
-                message: "Not authorized"
-            })
-        }
-        await ActivityLog.create({
-            user: req.user.id,
-            action: `Deleted Task : ${task.title}`
-        })
-        await Task.findByIdAndDelete(taskId)
-        res.status(200).json({ message: "task deleted successfully" })
+    res.status(201).json(task);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getMyTasks = async (req, res) => {
+  try {
+    const tasks = await Task.find({ user: req.user.id });
+    res.status(200).json(tasks);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getAllTasks = async (req, res) => {
+  try {
+    const tasks = await Task.find().populate("user", "username email");
+    res.status(200).json(tasks);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const deleteTask = async (req, res) => {
+  try {
+    await Task.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "Task deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const completeTask = async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
     }
-    catch (error) {
-        res.status(500).json({ message: "internal server error" })
-    }
-}
+
+    task.status = "completed";
+    await task.save();
+
+    res.status(200).json(task);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 module.exports = {
-    CreateTask,
-    GetMyTasks,
-    UpdateTask,
-    DeleteTask
-}
+  createTask,
+  getMyTasks,
+  getAllTasks,
+  deleteTask,
+  completeTask,
+};
